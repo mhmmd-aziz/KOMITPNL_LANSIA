@@ -34,6 +34,8 @@ cv-worker/.mpl_cfg/
 node_modules/
 web/dist/
 web/.vite/
+web/.qa/
+.runtime/
 npm-debug.log*
 
 # Flutter / Mobile

@@ -38,6 +38,8 @@ ipconfig
 
 ## Cara Menjalankan Proyek
 
+Untuk fokus **UI web setelah clone**, ikuti [panduan setup UI lokal](docs/SETUP_UI_WEB.md). Setelah dependensi, konfigurasi, dan seed siap, jalankan `.\start-web-dev.ps1` dari folder utama untuk menyalakan web serta backend. Mode UI dapat memakai SQLite yang sudah didukung backend; tidak memerlukan CV worker atau Flutter untuk login.
+
 ### 1. Backend FastAPI (`port 8000`)
 
 ```powershell
