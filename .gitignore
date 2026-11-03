@@ -1,0 +1,57 @@
+# Environment & kredensial (WAJIB JANGAN DI-COMMIT)
+.env
+.env.*
+!.env.example
+*firebase*adminsdk*.json
+firebase-service-account.json
+service-account*.json
+google-services.json
+GoogleService-Info.plist
+
+# Python (backend & cv-worker)
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+
+# Data lokal, database lokal, snapshot & pesan suara (privasi lansia)
+*.db
+*.sqlite3
+backend/uploads/
+!backend/uploads/.gitkeep
+cv-worker/*.mp4
+cv-worker/*.avi
+cv-worker/.yolo_cfg/
+cv-worker/.mpl_cfg/
+*.pt
+*.onnx
+
+# Node / Web Admin (React + Vite)
+node_modules/
+web/dist/
+web/.vite/
+npm-debug.log*
+
+# Flutter / Mobile
+mobile/.dart_tool/
+mobile/.packages
+mobile/build/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/android/key.properties
+*.jks
+*.keystore
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
