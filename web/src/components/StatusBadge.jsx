@@ -1,29 +1,15 @@
-import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, CircleHelp, CircleMinus, Wifi, WifiOff } from "lucide-react";
+
+const statuses = {
+  baru: { label: "Belum ditangani", variant: "danger", icon: AlertTriangle },
+  ditangani: { label: "Sudah ditangani", variant: "success", icon: CheckCircle2 },
+  alarm_palsu: { label: "Alarm palsu", variant: "neutral", icon: CircleMinus },
+  online: { label: "Kamera online", variant: "success", icon: Wifi },
+  offline: { label: "Kamera offline", variant: "neutral", icon: WifiOff },
+};
 
 export default function StatusBadge({ status }) {
-  if (status === "baru") {
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-bold tracking-wide text-red-800">
-        <AlertTriangle className="h-3.5 w-3.5 text-red-600" />
-        BELUM DITANGANI
-      </span>
-    );
-  }
-
-  if (status === "ditangani") {
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold tracking-wide text-emerald-800">
-        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-700" />
-        SUDAH DITANGANI
-      </span>
-    );
-  }
-
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-slate-100 px-3 py-1 text-xs font-semibold tracking-wide text-slate-700">
-      <XCircle className="h-3.5 w-3.5 text-slate-500" />
-      ALARM PALSU
-    </span>
-  );
+  const { label, variant, icon: Icon } = statuses[status] || { label: "Status belum tersedia", variant: "neutral", icon: CircleHelp };
+  return <span className={`badge badge-${variant}`}><Icon size={14} aria-hidden="true" />{label}</span>;
 }
 

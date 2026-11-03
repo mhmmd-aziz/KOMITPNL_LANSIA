@@ -27,7 +27,10 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const requestToken = error.config?.headers?.Authorization;
+    const activeToken = localStorage.getItem("sigap_token");
+    if (error.response?.status === 401 && !error.config?.signal?.aborted &&
+        requestToken === `Bearer ${activeToken}`) {
       const path = error.config?.url || "";
       if (!path.includes("/auth/login") && !path.includes("/auth/register")) {
         localStorage.removeItem("sigap_token");
