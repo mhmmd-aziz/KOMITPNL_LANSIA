@@ -18,6 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   bool _isRegister = false;
+  bool _obscurePassword = true;
   String? _error;
 
   @override
@@ -128,11 +129,19 @@ class _LoginScreenState extends State<LoginScreen> {
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: AppColors.primaryBorder),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(Icons.shield_outlined, color: AppColors.primary, size: 34),
-                    SizedBox(width: 14),
-                    Expanded(
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.asset(
+                        'assets/images/logo_aplikasi.png',
+                        width: 54,
+                        height: 54,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    const Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -146,7 +155,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           SizedBox(height: 3),
                           Text(
-                            'Terima peringatan real-time, pantau kamera, dan hubungi darurat dengan cepat.',
+                            'Terima peringatan real-time, atur Area Aman, & bicara 2 arah lewat CCTV.',
                             style: TextStyle(
                               fontSize: 12.5,
                               color: AppColors.textSecondary,
@@ -227,10 +236,25 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 12),
                         TextFormField(
                           controller: _passCtrl,
-                          obscureText: true,
-                          decoration: const InputDecoration(
+                          obscureText: _obscurePassword,
+                          decoration: InputDecoration(
                             labelText: 'Kata Sandi',
-                            prefixIcon: Icon(Icons.lock_outline),
+                            prefixIcon: const Icon(Icons.lock_outline),
+                            suffixIcon: IconButton(
+                              onPressed: () {
+                                setState(() {
+                                  _obscurePassword = !_obscurePassword;
+                                });
+                              },
+                              tooltip: _obscurePassword
+                                  ? 'Tampilkan Kata Sandi'
+                                  : 'Sembunyikan Kata Sandi',
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_outlined
+                                    : Icons.visibility_off_outlined,
+                              ),
+                            ),
                           ),
                           validator: (v) => (v == null || v.length < 6)
                               ? 'Minimal 6 karakter'

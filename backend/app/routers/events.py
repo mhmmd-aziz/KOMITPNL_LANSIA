@@ -42,10 +42,16 @@ def serialize_event(event: Event, base_url: str) -> EventResponse:
     camera = event.camera
     group = camera.group
     rel_path = event.snapshot_path.lstrip("/")
+    loc_cctv = (
+        camera.lokasi_cctv.strip()
+        if getattr(camera, "lokasi_cctv", None) and camera.lokasi_cctv.strip()
+        else f"{camera.nama_ruangan}, {group.nama_grup}"
+    )
     return EventResponse(
         id=event.id,
         camera_id=camera.id,
         camera_name=camera.nama_ruangan,
+        lokasi_cctv=loc_cctv,
         group_id=group.id,
         nama_grup=group.nama_grup,
         nama_lansia=group.nama_lansia,

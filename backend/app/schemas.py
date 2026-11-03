@@ -40,22 +40,37 @@ class GroupCreateRequest(BaseModel):
     nama_grup: str = Field(..., min_length=2, max_length=120)
     nama_lansia: str = Field(..., min_length=2, max_length=120)
     kontak_darurat: str = Field(..., min_length=5, max_length=30)
+    kode_undangan: str | None = Field(default=None, max_length=16)
+    nama_ruangan_awal: str | None = Field(default=None, max_length=100)
+    lokasi_cctv_awal: str | None = Field(default=None, max_length=255)
 
 
 class GroupUpdateRequest(BaseModel):
     nama_grup: str | None = Field(default=None, min_length=2, max_length=120)
     nama_lansia: str | None = Field(default=None, min_length=2, max_length=120)
     kontak_darurat: str | None = Field(default=None, min_length=5, max_length=30)
+    kode_undangan: str | None = Field(default=None, max_length=16)
 
 
 class GroupJoinRequest(BaseModel):
-    kode_undangan: str = Field(..., min_length=6, max_length=6)
+    kode_undangan: str = Field(..., min_length=4, max_length=16)
+
+
+class GroupVerifyCodeRequest(BaseModel):
+    kode_undangan: str = Field(..., min_length=4, max_length=16)
 
 
 class CameraCreateRequest(BaseModel):
     group_id: int | None = None
     nama_ruangan: str = Field(..., min_length=2, max_length=100)
+    lokasi_cctv: str = Field(default="", max_length=255)
     sumber: str = Field(default="demo_duduk.mp4", max_length=255)
+
+
+class CameraUpdateRequest(BaseModel):
+    nama_ruangan: str | None = Field(default=None, min_length=2, max_length=100)
+    lokasi_cctv: str | None = Field(default=None, max_length=255)
+    sumber: str | None = Field(default=None, max_length=255)
 
 
 class CameraSourceSwitchRequest(BaseModel):
@@ -66,6 +81,7 @@ class CameraResponse(BaseModel):
     id: int
     group_id: int
     nama_ruangan: str
+    lokasi_cctv: str = ""
     sumber: str
     status: str
 
@@ -99,6 +115,7 @@ class EventResponse(BaseModel):
     id: int
     camera_id: int
     camera_name: str
+    lokasi_cctv: str = ""
     group_id: int
     nama_grup: str
     nama_lansia: str

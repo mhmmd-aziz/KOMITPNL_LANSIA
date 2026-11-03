@@ -141,6 +141,50 @@ def send_fall_fcm(
         return 0
 
 
+def send_cctv_voice_fcm(
+    tokens: list[str],
+    camera_id: int,
+    group_id: int,
+    nama_lansia: str,
+    camera_name: str,
+    audio_url: str,
+) -> int:
+    """Kirim notifikasi FCM ke grup keluarga saat lansia/POV CCTV berbicara ke HP keluarga."""
+    if not tokens or not init_firebase():
+        return 0
+
+    from firebase_admin import messaging
+
+    message = messaging.MulticastMessage(
+        tokens=tokens,
+        notification=messaging.Notification(
+            title=f"Suara dari CCTV {camera_name}",
+            body=f"{nama_lansia} berbicara melalui mikrofon ruangan. Ketuk untuk mendengar.",
+        ),
+        data={
+            "type": "cctv_voice",
+            "camera_id": str(camera_id),
+            "group_id": str(group_id),
+            "camera_name": camera_name,
+            "audio_url": audio_url,
+        },
+        android=messaging.AndroidConfig(
+            priority="high",
+            notification=messaging.AndroidNotification(
+                channel_id="sigap_fall_alert",
+                sound="default",
+            ),
+        ),
+    )
+
+    try:
+        response = messaging.send_each_for_multicast(message)
+        return response.success_count
+    except Exception as exc:
+        logger.error("Gagal mengirim FCM suara CCTV kamera #%s: %s", camera_id, exc)
+        return 0
+
+
 async def schedule_fall_reminders(event_id: int) -> None:
     """Kirim pengingat ulang tiap 2 menit (maksimal 3 kali) jika event masih berstatus 'baru'."""
     for attempt in range(1, MAX_REMINDER_COUNT + 1):

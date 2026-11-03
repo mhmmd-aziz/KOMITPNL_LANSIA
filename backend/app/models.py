@@ -28,7 +28,7 @@ class FamilyGroup(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     nama_grup: Mapped[str] = mapped_column(String(120), nullable=False)
     nama_lansia: Mapped[str] = mapped_column(String(120), nullable=False)
-    kode_undangan: Mapped[str] = mapped_column(String(6), unique=True, index=True, nullable=False)
+    kode_undangan: Mapped[str] = mapped_column(String(16), unique=True, index=True, nullable=False)
     kontak_darurat: Mapped[str] = mapped_column(String(30), nullable=False)
     admin_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
 
@@ -64,6 +64,7 @@ class Camera(Base):
         Integer, ForeignKey("family_groups.id", ondelete="CASCADE"), nullable=False, index=True
     )
     nama_ruangan: Mapped[str] = mapped_column(String(100), nullable=False)
+    lokasi_cctv: Mapped[str] = mapped_column(String(255), default="", nullable=False)
     sumber: Mapped[str] = mapped_column(String(255), default="0", nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="offline", nullable=False)
 

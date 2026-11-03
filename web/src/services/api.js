@@ -27,7 +27,13 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const requestToken = error.config?.headers?.Authorization;
+    const activeToken = localStorage.getItem("sigap_token");
+    if (
+      error.response?.status === 401 &&
+      !error.config?.signal?.aborted &&
+      requestToken === `Bearer ${activeToken}`
+    ) {
       const path = error.config?.url || "";
       if (!path.includes("/auth/login") && !path.includes("/auth/register")) {
         localStorage.removeItem("sigap_token");
@@ -42,6 +48,18 @@ api.interceptors.response.use(
 export function getCameraStreamUrl(cameraId) {
   const token = localStorage.getItem("sigap_token") || "";
   return `${BACKEND_URL}/cameras/${cameraId}/stream?token=${encodeURIComponent(token)}`;
+}
+
+export function getSimulationStreamUrl(cameraId = 1, nonce = "") {
+  const token = localStorage.getItem("sigap_token") || "";
+  const bust = nonce ? `&_t=${encodeURIComponent(nonce)}` : "";
+  return `${BACKEND_URL}/simulations/stream?camera_id=${cameraId}&token=${encodeURIComponent(token)}${bust}`;
+}
+
+export function getSimulationVideoFileUrl(videoName, cameraId = 1, rev = "") {
+  const token = localStorage.getItem("sigap_token") || "";
+  const bust = rev ? `&_v=${encodeURIComponent(rev)}` : "";
+  return `${BACKEND_URL}/simulations/video-file?video_name=${encodeURIComponent(videoName)}&camera_id=${cameraId}&token=${encodeURIComponent(token)}${bust}`;
 }
 
 export function getGroupWsUrl(groupId) {

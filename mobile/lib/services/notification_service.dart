@@ -17,7 +17,7 @@ class NotificationService {
   static final NotificationService instance = NotificationService._();
 
   static const String channelId = 'sigap_fall_alert';
-  static const String channelName = 'Peringatan Jatuh Lansia (SIGAP)';
+  static const String channelName = 'Peringatan Jatuh & Interkom Lansia (SIGAP)';
 
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
@@ -37,7 +37,7 @@ class NotificationService {
   }
 
   Future<void> initialize() async {
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings('@drawable/ic_stat_sigap');
     const initSettings = InitializationSettings(android: androidSettings);
 
     await _localNotifications.initialize(
@@ -45,7 +45,7 @@ class NotificationService {
       onDidReceiveNotificationResponse: (NotificationResponse response) {
         final payload = response.payload;
         final eventId = int.tryParse(payload ?? '');
-        if (eventId != null) {
+        if (eventId != null && eventId > 0) {
           if (_onEventTapped != null) {
             _onEventTapped!(eventId);
           } else {
@@ -63,7 +63,8 @@ class NotificationService {
       const AndroidNotificationChannel(
         channelId,
         channelName,
-        description: 'Notifikasi darurat prioritas tinggi saat lansia terdeteksi jatuh',
+        description:
+            'Notifikasi darurat prioritas tinggi saat lansia terdeteksi jatuh atau berbicara lewat CCTV',
         importance: Importance.max,
         playSound: true,
         enableVibration: true,
@@ -81,19 +82,32 @@ class NotificationService {
         sound: true,
       );
 
-      // Saat aplikasi dibuka dari kondisi tertutup (terminated) melalui ketukan FCM
       final initialMsg = await FirebaseMessaging.instance.getInitialMessage();
       _handleRemoteTap(initialMsg, isInitial: true);
 
-      // Saat aplikasi dibuka dari background melalui ketukan FCM
       FirebaseMessaging.onMessageOpenedApp.listen(_handleRemoteTap);
 
-      // Saat aplikasi sedang terbuka (foreground): tampilkan heads-up local notification
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        final msgType = message.data['type']?.toString() ?? 'fall';
+        if (msgType == 'cctv_voice') {
+          final camId =
+              int.tryParse(message.data['camera_id']?.toString() ?? '') ?? 1;
+          final title =
+              message.notification?.title ?? 'Suara Masuk dari POV CCTV';
+          final body = message.notification?.body ??
+              'Lansia berbicara melalui mikrofon ruangan. Buka aplikasi untuk mendengar.';
+          showCctvVoiceNotification(
+            cameraId: camId,
+            title: title,
+            body: body,
+          );
+          return;
+        }
+
         final eventId = int.tryParse(message.data['event_id']?.toString() ?? '');
         final title = message.notification?.title ?? 'Peringatan jatuh!';
-        final body =
-            message.notification?.body ?? 'Lansia terdeteksi jatuh. Ketuk untuk bertindak.';
+        final body = message.notification?.body ??
+            'Lansia terdeteksi jatuh. Ketuk untuk bertindak.';
         showFallHeadsUpNotification(
           eventId: eventId ?? 0,
           title: title,
@@ -143,6 +157,8 @@ class NotificationService {
       channelId,
       channelName,
       channelDescription: 'Notifikasi darurat prioritas tinggi saat lansia jatuh',
+      icon: '@drawable/ic_stat_sigap',
+      largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
       importance: Importance.max,
       priority: Priority.high,
       playSound: true,
@@ -158,5 +174,29 @@ class NotificationService {
       payload: eventId > 0 ? eventId.toString() : null,
     );
   }
-}
 
+  Future<void> showCctvVoiceNotification({
+    required int cameraId,
+    required String title,
+    required String body,
+  }) async {
+    const androidDetails = AndroidNotificationDetails(
+      channelId,
+      channelName,
+      channelDescription: 'Pesan suara masuk dari mikrofon POV CCTV ruangan lansia',
+      icon: '@drawable/ic_stat_sigap',
+      largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+      importance: Importance.high,
+      priority: Priority.high,
+      playSound: true,
+      enableVibration: true,
+    );
+
+    await _localNotifications.show(
+      900000 + cameraId,
+      title,
+      body,
+      const NotificationDetails(android: androidDetails),
+    );
+  }
+}

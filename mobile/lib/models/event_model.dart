@@ -2,6 +2,7 @@ class FallEventModel {
   final int id;
   final int cameraId;
   final String cameraName;
+  final String lokasiCctv;
   final int groupId;
   final String namaGrup;
   final String namaLansia;
@@ -18,6 +19,7 @@ class FallEventModel {
     required this.id,
     required this.cameraId,
     required this.cameraName,
+    this.lokasiCctv = '',
     required this.groupId,
     required this.namaGrup,
     required this.namaLansia,
@@ -33,11 +35,18 @@ class FallEventModel {
 
   bool get isUnhandled => status == 'baru';
 
+  String get effectiveLokasiCctv {
+    if (lokasiCctv.trim().isNotEmpty) return lokasiCctv.trim();
+    if (namaGrup.trim().isNotEmpty) return '$cameraName, $namaGrup';
+    return cameraName;
+  }
+
   factory FallEventModel.fromJson(Map<String, dynamic> json) {
     return FallEventModel(
       id: (json['id'] as num).toInt(),
       cameraId: (json['camera_id'] as num).toInt(),
       cameraName: (json['camera_name'] ?? 'Ruangan').toString(),
+      lokasiCctv: (json['lokasi_cctv'] ?? '').toString(),
       groupId: (json['group_id'] as num).toInt(),
       namaGrup: (json['nama_grup'] ?? '').toString(),
       namaLansia: (json['nama_lansia'] ?? 'Lansia').toString(),

@@ -7,6 +7,7 @@ import '../models/event_model.dart';
 import '../services/api_service.dart';
 import '../services/sigap_provider.dart';
 import '../theme/app_colors.dart';
+import '../utils/whatsapp_emergency.dart';
 import '../widgets/mjpeg_stream_view.dart';
 import '../widgets/push_to_talk_button.dart';
 import '../widgets/status_badge.dart';
@@ -76,6 +77,20 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     if (clean.isEmpty) return;
     final uri = Uri(scheme: 'tel', path: clean);
     await launchUrl(uri);
+  }
+
+  Future<void> _sendWhatsAppEmergency() async {
+    if (_event == null) return;
+    final ok = await WhatsAppEmergencyHelper.sendFallEventToWhatsApp(_event!);
+    if (!mounted) return;
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: AppColors.sos,
+          content: Text('Gagal membuka WhatsApp. Pastikan WhatsApp terpasang di HP.'),
+        ),
+      );
+    }
   }
 
   Future<void> _updateStatus(String status) async {
@@ -196,7 +211,40 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                   color: AppColors.textPrimary,
                                 ),
                               ),
-                              const SizedBox(height: 4),
+                              const SizedBox(height: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 7,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surfaceMuted,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: AppColors.border),
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Icon(
+                                      Icons.location_on_rounded,
+                                      size: 16,
+                                      color: AppColors.sos,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        'Lokasi CCTV: ${_event!.effectiveLokasiCctv}',
+                                        style: const TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.textPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 6),
                               Text(
                                 'Waktu: ${formatWaktuWib(_event!.waktu)}',
                                 style: const TextStyle(
@@ -276,7 +324,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
                         // 1. TOMBOL SOS TELEPON DARURAT (<= 2 ketukan dari notifikasi)
                         SizedBox(
-                          height: 60,
+                          height: 58,
                           child: FilledButton.icon(
                             onPressed: () => _dialEmergency(_event!.kontakDarurat),
                             style: FilledButton.styleFrom(
@@ -286,13 +334,38 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                 borderRadius: BorderRadius.circular(14),
                               ),
                             ),
-                            icon: const Icon(Icons.phone_in_talk_rounded, size: 25),
+                            icon: const Icon(Icons.phone_in_talk_rounded, size: 24),
                             label: Text(
                               'TELEPON DARURAT (${_event!.kontakDarurat})',
                               style: const TextStyle(
-                                fontSize: 15.5,
+                                fontSize: 15,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: 0.3,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+
+                        // 1B. TOMBOL KIRIM PESAN WA DARURAT BESERTA LOKASI CCTV
+                        SizedBox(
+                          height: 58,
+                          child: FilledButton.icon(
+                            onPressed: _sendWhatsAppEmergency,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF15803D),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            icon: const Icon(Icons.chat_rounded, size: 23),
+                            label: const Text(
+                              'KIRIM WA DARURAT + LOKASI CCTV',
+                              style: TextStyle(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.2,
                               ),
                             ),
                           ),

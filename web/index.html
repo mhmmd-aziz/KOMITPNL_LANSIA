@@ -3,11 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SIGAP Admin — Pemantauan Lansia & Grup Keluarga</title>
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="description" content="Kenali SIGAP, proyek deteksi jatuh pada lansia melalui kamera yang menghubungkan peringatan kejadian dengan keluarga agar bantuan dapat segera dikoordinasikan." />
+    <link rel="icon" type="image/svg+xml" href="/assets/symbol.svg" />
+    <link rel="alternate icon" type="image/png" href="/favicon.png" />
+    <link rel="preload" href="/fonts/plus-jakarta-sans-latin-variable.woff2" as="font" type="font/woff2" crossorigin />
+    <title>SIGAP — Lebih cepat tahu, lebih sigap membantu</title>
   </head>
   <body class="bg-slate-50 text-slate-900 antialiased">
-    <div id="root"></div>
+    <div id="root">
+      <div class="boot-loader" style="min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;background:#fff;" role="status" aria-label="Memuat SIGAP">
+        <img src="/assets/wordmark.svg" alt="SIGAP" style="width:128px;height:auto;" />
+        <span aria-hidden="true" style="position:relative;width:128px;height:2px;overflow:hidden;border-radius:999px;background:#ededed;"></span>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
-

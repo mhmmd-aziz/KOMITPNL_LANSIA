@@ -18,7 +18,7 @@ async def group_websocket(
     group_id: int,
     token: str = Query(default=""),
 ) -> None:
-    """Kanal real-time anggota/admin grup untuk event.created, event.updated, camera.status."""
+    """Kanal real-time anggota grup untuk event.created, event.updated, cctv.voice, camera.status."""
     db = SessionLocal()
     try:
         user = decode_token(token, db)
@@ -49,18 +49,20 @@ async def worker_websocket(
     camera_id: int,
     key: str = Query(default=""),
 ) -> None:
-    """Kanal cv-worker untuk status online otomatis dan penerimaan pesan suara voice.play."""
+    """Kanal cv-worker untuk status online otomatis, telemetri per kamera, & suara 2 arah."""
     if not key or key != WORKER_API_KEY:
         await websocket.close(code=4401)
         return
 
     group_id: int | None = None
+    cam_group_cache: dict[int, int] = {}
     db = SessionLocal()
     try:
         cam = db.get(Camera, camera_id)
         if cam:
             cam.status = "online"
             group_id = cam.group_id
+            cam_group_cache[camera_id] = cam.group_id
             db.commit()
     finally:
         db.close()
@@ -84,6 +86,24 @@ async def worker_websocket(
                         db_ack.commit()
                 finally:
                     db_ack.close()
+            elif msg.get("type") == "simulation.telemetry":
+                target_cam_id = int(msg.get("camera_id") or camera_id)
+                ws_manager.latest_telemetry[target_cam_id] = msg
+
+                # Teruskan telemetri HANYA ke grup pemilik target_cam_id
+                target_gid = cam_group_cache.get(target_cam_id)
+                if target_gid is None:
+                    db_lookup = SessionLocal()
+                    try:
+                        tcam = db_lookup.get(Camera, target_cam_id)
+                        if tcam:
+                            target_gid = tcam.group_id
+                            cam_group_cache[target_cam_id] = target_gid
+                    finally:
+                        db_lookup.close()
+
+                if target_gid is not None:
+                    await ws_manager.broadcast_to_group(target_gid, msg)
     except WebSocketDisconnect:
         pass
     except Exception:
@@ -105,4 +125,3 @@ async def worker_websocket(
                 group_id,
                 {"type": "camera.status", "camera_id": camera_id, "status": "offline"},
             )
-

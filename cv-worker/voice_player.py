@@ -1,10 +1,11 @@
-"""Klien WebSocket cv-worker untuk status online, pemutar suara, & pergantian video simulasi."""
+"""Klien WebSocket cv-worker untuk status online, pemutar suara, & kontrol simulasi sekali putar."""
 
 import asyncio
 import json
 import logging
 from pathlib import Path
 import platform
+import queue
 import shutil
 import subprocess
 import tempfile
@@ -16,24 +17,31 @@ import config
 
 logger = logging.getLogger("sigap.voice")
 
-_source_lock = threading.Lock()
-_pending_source: str | None = None
+_cmd_queue: "queue.Queue[dict]" = queue.Queue()
+_telemetry_queue: "queue.Queue[dict]" = queue.Queue(maxsize=5)
 
 
-def request_source_switch(new_source: str) -> None:
-    """Simpan permintaan pergantian sumber video (dari Web Admin atau hotkey)."""
-    global _pending_source
-    with _source_lock:
-        _pending_source = new_source.strip()
+def push_worker_command(cmd: dict) -> None:
+    """Masukkan perintah kontrol simulasi (prepare / zones / run / stop) ke antrean."""
+    _cmd_queue.put_nowait(cmd)
 
 
-def consume_pending_source() -> str | None:
-    """Ambil dan kosongkan permintaan pergantian sumber video bila ada."""
-    global _pending_source
-    with _source_lock:
-        src = _pending_source
-        _pending_source = None
-        return src
+def consume_worker_command() -> dict | None:
+    """Ambil satu perintah simulasi dari antrean secara berurutan (FIFO)."""
+    try:
+        return _cmd_queue.get_nowait()
+    except queue.Empty:
+        return None
+
+
+def publish_telemetry(payload: dict) -> None:
+    """Kirim status telemetri frame saat ini ke antrean WebSocket non-blocking."""
+    try:
+        while _telemetry_queue.full():
+            _telemetry_queue.get_nowait()
+        _telemetry_queue.put_nowait(payload)
+    except Exception:
+        pass
 
 
 def play_audio_file(file_path: Path) -> bool:
@@ -105,8 +113,22 @@ def download_and_play(url: str) -> bool:
             pass
 
 
+async def _telemetry_sender(ws) -> None:
+    """Kirim telemetri berkala dari cv-worker ke backend."""
+    while True:
+        await asyncio.sleep(0.25)
+        latest = None
+        while not _telemetry_queue.empty():
+            try:
+                latest = _telemetry_queue.get_nowait()
+            except Exception:
+                break
+        if latest is not None:
+            await ws.send(json.dumps(latest))
+
+
 async def _worker_ws_loop() -> None:
-    """Pertahankan koneksi WebSocket ke backend untuk status online, suara, & kontrol simulasi."""
+    """Pertahankan koneksi WebSocket ke backend untuk suara & kontrol simulasi."""
     ws_base = config.BACKEND_URL.replace("https://", "wss://").replace("http://", "ws://")
     ws_url = f"{ws_base}/ws/worker/{config.CAMERA_ID}?key={config.WORKER_API_KEY}"
 
@@ -114,28 +136,36 @@ async def _worker_ws_loop() -> None:
         try:
             async with websockets.connect(ws_url, ping_interval=20, ping_timeout=20) as ws:
                 logger.info("Terhubung ke kanal WebSocket backend (camera_id=%s).", config.CAMERA_ID)
-                async for raw_msg in ws:
-                    try:
-                        data = json.loads(raw_msg)
-                    except json.JSONDecodeError:
-                        continue
+                sender_task = asyncio.create_task(_telemetry_sender(ws))
+                try:
+                    async for raw_msg in ws:
+                        try:
+                            data = json.loads(raw_msg)
+                        except json.JSONDecodeError:
+                            continue
 
-                    msg_type = data.get("type")
-                    if msg_type == "voice.play" and data.get("url"):
-                        played = await asyncio.to_thread(download_and_play, data["url"])
-                        if played and data.get("voice_id"):
-                            await ws.send(
-                                json.dumps(
-                                    {
-                                        "type": "voice.played",
-                                        "voice_id": data["voice_id"],
-                                    }
+                        msg_type = data.get("type")
+                        if msg_type == "voice.play" and data.get("url"):
+                            played = await asyncio.to_thread(download_and_play, data["url"])
+                            if played and data.get("voice_id"):
+                                await ws.send(
+                                    json.dumps(
+                                        {
+                                            "type": "voice.played",
+                                            "voice_id": data["voice_id"],
+                                        }
+                                    )
                                 )
-                            )
-                    elif msg_type == "source.switch" and data.get("source"):
-                        new_src = str(data["source"])
-                        logger.info("Menerima perintah ganti sumber CCTV ke: %s", new_src)
-                        request_source_switch(new_src)
+                        elif msg_type in (
+                            "simulation.prepare",
+                            "simulation.run",
+                            "simulation.stop",
+                            "simulation.zones",
+                            "source.switch",
+                        ):
+                            push_worker_command(data)
+                finally:
+                    sender_task.cancel()
         except Exception as exc:
             logger.warning("Koneksi WebSocket worker terputus (%s). Mencoba lagi 3 detik...", exc)
             await asyncio.sleep(3)
