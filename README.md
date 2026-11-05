@@ -110,3 +110,39 @@ flutter run --dart-define=BACKEND_URL=http://<IP-LAN-laptop>:8000
 - **Aksi Keluarga ≤ 2 Ketukan:** Lihat *snapshot* & *Live View* MJPEG, bicara ke speaker CCTV (*Push-to-Talk*), tekan **Tombol SOS Telepon Darurat**, atau tandai **Sudah Ditangani / Alarm Palsu** yang tersinkronisasi *real-time* via WebSocket.
 - **Privacy by Design:** Sistem **tidak pernah menyimpan rekaman video**; hanya satu *snapshot* saat jatuh terkonfirmasi dengan **wajah diburamkan otomatis**, serta pembersihan retensi otomatis 30 hari.
 
+---
+
+## Kredit & Lisensi Pihak Ketiga
+
+Proyek ini memakai library, model, font, dan referensi desain open-source berikut sesuai lisensinya masing-masing (TOR H).
+
+### Model & desain
+
+| Komponen | Dipakai untuk | Lisensi | Sumber |
+| --- | --- | --- | --- |
+| Ultralytics YOLOv8 + bobot `yolov8n-pose.pt` | Pose estimation 17 keypoint di CV Worker | AGPL-3.0 | [github.com/ultralytics/ultralytics](https://github.com/ultralytics/ultralytics) |
+| TailAdmin React (free) | Inspirasi layout dashboard web (sidebar, header, kartu); kode ditulis ulang dalam JSX | MIT | [github.com/TailAdmin/free-react-tailwind-admin-dashboard](https://github.com/TailAdmin/free-react-tailwind-admin-dashboard) |
+| Plus Jakarta Sans | Font teks web, disajikan lokal | SIL OFL 1.1 | [github.com/tokotype/PlusJakartaSans](https://github.com/tokotype/PlusJakartaSans) |
+| Instrument Serif | Font judul web, disajikan lokal | SIL OFL 1.1 | [github.com/Instrument/instrument-serif](https://github.com/Instrument/instrument-serif) |
+| Lucide | Ikon web (`lucide-react`) | ISC | [lucide.dev](https://lucide.dev) |
+
+Berkas lisensi font disertakan di `web/public/fonts/` (`OFL-Plus-Jakarta-Sans.txt`, `OFL-Instrument-Serif.txt`). Logo, ilustrasi, dan ikon aplikasi SIGAP adalah aset milik tim. Karena Ultralytics berlisensi AGPL-3.0, kode sumber SIGAP dipublikasikan terbuka di repositori ini.
+
+### Library per komponen
+
+| Komponen | Library | Lisensi |
+| --- | --- | --- |
+| Backend (`/backend`) | FastAPI, SQLAlchemy, PyMySQL, Pydantic, PyJWT | MIT |
+| | Uvicorn, HTTPX, python-dotenv | BSD-3-Clause |
+| | firebase-admin, bcrypt, python-multipart | Apache-2.0 |
+| | cryptography | Apache-2.0 / BSD-3-Clause |
+| CV Worker (`/cv-worker`) | Ultralytics | AGPL-3.0 |
+| | OpenCV (`opencv-python`), Requests | Apache-2.0 |
+| | NumPy, websockets, python-dotenv | BSD-3-Clause |
+| Web Admin (`/web`) | React, React DOM, Vite, `@vitejs/plugin-react`, Tailwind CSS, `@tailwindcss/vite`, axios | MIT |
+| | lucide-react | ISC |
+| Mobile (`/mobile`) | Flutter SDK, firebase_core, firebase_messaging, flutter_local_notifications, url_launcher, shared_preferences, path_provider, video_player, image_picker, web_socket_channel, intl, record | BSD-3-Clause |
+| | provider, dio, audioplayers, cupertino_icons | MIT |
+
+Lisensi di atas diverifikasi dari metadata paket yang terpasang (`pip`, `node_modules`, dan pub cache Flutter) pada 3 November 2026.
+
