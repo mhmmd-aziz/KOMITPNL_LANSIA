@@ -223,25 +223,25 @@ async def stream_camera(
     if cam.sumber.startswith("http://") or cam.sumber.startswith("https://"):
         upstream_url = cam.sumber
     else:
-        if ws_manager.active_worker_camera_id != camera_id:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Stream kamera ruangan ini sedang siaga (tidak sedang memutar simulasi aktif).",
-            )
+        from app.routers.simulations import _ensure_cv_worker_running
+
+        ws_manager.active_worker_camera_id = camera_id
+        _ensure_cv_worker_running(camera_id)
         upstream_url = f"{CV_WORKER_URL}/stream"
 
     async def mjpeg_generator():
         timeout = httpx.Timeout(connect=5.0, read=None, write=5.0, pool=5.0)
-        try:
-            async with httpx.AsyncClient(timeout=timeout) as client:
-                async with client.stream("GET", upstream_url) as response:
-                    if response.status_code != 200:
-                        return
-                    async for chunk in response.aiter_bytes(chunk_size=4096):
-                        if chunk:
-                            yield chunk
-        except Exception:
-            return
+        for _attempt in range(8):
+            try:
+                async with httpx.AsyncClient(timeout=timeout) as client:
+                    async with client.stream("GET", upstream_url) as response:
+                        if response.status_code == 200:
+                            async for chunk in response.aiter_bytes(chunk_size=4096):
+                                if chunk:
+                                    yield chunk
+                            return
+            except Exception:
+                await asyncio.sleep(0.5)
 
     return StreamingResponse(
         mjpeg_generator(),

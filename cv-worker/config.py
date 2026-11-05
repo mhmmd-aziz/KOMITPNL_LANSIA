@@ -7,8 +7,8 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 
-# Koneksi ke Backend
-BACKEND_URL: str = os.getenv("BACKEND_URL", "http://127.0.0.1:8000").rstrip("/")
+# Koneksi ke Backend (selalu gunakan loopback 127.0.0.1 agar aman saat ganti Wi-Fi/Hotspot waktu presentasi)
+BACKEND_URL: str = os.getenv("FORCE_BACKEND_URL", "http://127.0.0.1:8000").rstrip("/")
 WORKER_API_KEY: str = os.getenv("WORKER_API_KEY", "sigap-worker-key-2026")
 CAMERA_ID: int = int(os.getenv("CAMERA_ID", "1"))
 

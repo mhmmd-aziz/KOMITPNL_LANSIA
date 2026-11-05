@@ -1,11 +1,29 @@
 """Manajer koneksi WebSocket untuk grup keluarga dan cv-worker kamera."""
 
-from collections import deque
-from collections import defaultdict
+from collections import defaultdict, deque
 import logging
+import os
+import socket
+import httpx
 from fastapi import WebSocket
 
+from app.config import CV_WORKER_URL
+
 logger = logging.getLogger("sigap.ws")
+
+
+def _is_local_worker_port_open(host: str = "127.0.0.1", port: int = 8001) -> bool:
+    if os.getenv("WORKER_API_KEY") == "test-worker-key":
+        return False
+    try:
+        with httpx.Client(timeout=0.3) as client:
+            r = client.get(f"http://{host}:{port}/telemetry")
+            if r.status_code == 200:
+                data = r.json()
+                return isinstance(data, dict) and data.get("source") not in (None, "IDLE")
+            return False
+    except Exception:
+        return False
 
 
 class ConnectionManager:
@@ -50,7 +68,7 @@ class ConnectionManager:
             self.worker_connections.pop(camera_id, None)
 
     def has_any_worker(self) -> bool:
-        return len(self.worker_connections) > 0
+        return len(self.worker_connections) > 0 or _is_local_worker_port_open()
 
     def is_worker_online_for(self, camera_id: int) -> bool:
         return camera_id in self.worker_connections or self.has_any_worker()
@@ -59,23 +77,43 @@ class ConnectionManager:
         self.recent_camera_voices[camera_id].appendleft(entry)
 
     async def send_to_worker(self, camera_id: int, message: dict) -> bool:
-        """Kirim perintah ke cv-worker dengan mengunci target_camera_id agar tidak bocor ke grup lain."""
+        """Kirim perintah ke cv-worker lewat HTTP langsung (:8001/command) maupun WebSocket."""
+        self.active_worker_camera_id = camera_id
+        payload = {**message, "target_camera_id": camera_id}
+        delivered = False
+
+        # 1. Kirim langsung ke server HTTP proses CV Worker yang memegang port 8001
+        if (
+            os.getenv("WORKER_API_KEY") != "test-worker-key"
+            and message.get("type") != "voice.play"
+        ):
+            try:
+                async with httpx.AsyncClient(timeout=1.5) as client:
+                    resp = await client.post(f"{CV_WORKER_URL}/command", json=payload)
+                    if resp.status_code == 200:
+                        delivered = True
+            except Exception:
+                pass
+
+        # 2. Jika sudah terkirim via HTTP dan bukan voice.play, tidak perlu duplikasi perintah di WS
+        if delivered and message.get("type") != "voice.play":
+            return True
+
+        # 3. Cadangan / jalur WebSocket (untuk voice.play dan unit test)
         ws = self.worker_connections.get(camera_id)
         used_key = camera_id
         if ws is None and self.worker_connections:
             used_key, ws = next(iter(self.worker_connections.items()))
         if not ws:
-            return False
+            return delivered
 
-        self.active_worker_camera_id = camera_id
-        payload = {**message, "target_camera_id": camera_id}
         try:
             await ws.send_json(payload)
             return True
         except Exception as exc:
-            logger.warning("Gagal mengirim pesan ke worker kamera %s: %s", camera_id, exc)
+            logger.warning("Gagal mengirim pesan WS ke worker kamera %s: %s", camera_id, exc)
             self.worker_connections.pop(used_key, None)
-            return False
+            return delivered
 
 
 ws_manager = ConnectionManager()

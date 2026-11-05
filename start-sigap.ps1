@@ -89,9 +89,9 @@ function Set-EnvValue {
     Set-Content -Path $FilePath -Value $updated -Encoding ASCII
 }
 
-# 2. Sinkronkan BACKEND_URL ke web/.env, cv-worker/.env, dan default mobile Flutter
-Set-EnvValue -FilePath "$RootDir\web\.env" -ExamplePath "$RootDir\web\.env.example" -Key "BACKEND_URL" -Value $BackendUrl
-Set-EnvValue -FilePath "$RootDir\cv-worker\.env" -ExamplePath "$RootDir\cv-worker\.env.example" -Key "BACKEND_URL" -Value $BackendUrl
+# 2. Sinkronkan BACKEND_URL: untuk Web & CV Worker di laptop gunakan loopback agar kebal ganti Wi-Fi, untuk Mobile gunakan IP LAN
+Set-EnvValue -FilePath "$RootDir\web\.env" -ExamplePath "$RootDir\web\.env.example" -Key "BACKEND_URL" -Value "http://localhost:8000"
+Set-EnvValue -FilePath "$RootDir\cv-worker\.env" -ExamplePath "$RootDir\cv-worker\.env.example" -Key "BACKEND_URL" -Value "http://127.0.0.1:8000"
 if (-not (Test-Path "$RootDir\backend\.env") -and (Test-Path "$RootDir\backend\.env.example")) {
     Copy-Item "$RootDir\backend\.env.example" "$RootDir\backend\.env"
 }

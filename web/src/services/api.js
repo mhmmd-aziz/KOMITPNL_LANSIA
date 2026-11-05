@@ -1,12 +1,13 @@
 import axios from "axios";
 
 const defaultHost =
-  typeof window !== "undefined" ? window.location.hostname : "127.0.0.1";
+  typeof window !== "undefined" && window.location.hostname
+    ? window.location.hostname
+    : "127.0.0.1";
 
+// Gunakan hostname aktif browser (localhost atau IP LAN saat ini) agar tidak pernah nyangkut di IP Wi-Fi kemarin saat pindah tempat presentasi
 export const BACKEND_URL = (
-  import.meta.env.BACKEND_URL ||
-  import.meta.env.VITE_BACKEND_URL ||
-  `http://${defaultHost}:8000`
+  import.meta.env.VITE_FORCE_BACKEND_URL || `http://${defaultHost}:8000`
 ).replace(/\/$/, "");
 
 const api = axios.create({

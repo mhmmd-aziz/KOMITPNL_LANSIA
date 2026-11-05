@@ -72,9 +72,13 @@ class SimulationZonesRequest(BaseModel):
 
 def _is_worker_mjpeg_port_open(host: str = "127.0.0.1", port: int = 8001) -> bool:
     try:
-        with socket.create_connection((host, port), timeout=0.25):
-            return True
-    except OSError:
+        with httpx.Client(timeout=0.3) as client:
+            r = client.get(f"http://{host}:{port}/telemetry")
+            if r.status_code == 200:
+                data = r.json()
+                return isinstance(data, dict) and data.get("source") not in (None, "IDLE")
+            return False
+    except Exception:
         return False
 
 
@@ -82,8 +86,6 @@ def _ensure_cv_worker_running(camera_id: int = 1) -> bool:
     """Nyalakan CV Worker secara otomatis di background tanpa jendela popup jika belum aktif."""
     global _last_worker_spawn_ts
 
-    if ws_manager.has_any_worker():
-        return True
     if os.getenv("WORKER_API_KEY") == "test-worker-key":
         return False
     if _is_worker_mjpeg_port_open():
@@ -467,7 +469,20 @@ def get_simulation_telemetry(
     _ensure_simulation_access(db, camera_id, current_user)
     if not ws_manager.has_any_worker():
         _ensure_cv_worker_running(camera_id)
+
     tel = ws_manager.latest_telemetry.get(camera_id)
+    if os.getenv("WORKER_API_KEY") != "test-worker-key":
+        try:
+            with httpx.Client(timeout=0.8) as client:
+                r = client.get(f"{CV_WORKER_URL}/telemetry")
+                if r.status_code == 200:
+                    direct_tel = r.json()
+                    if isinstance(direct_tel, dict):
+                        tel = direct_tel
+                        ws_manager.latest_telemetry[camera_id] = direct_tel
+        except Exception:
+            pass
+
     return {
         "online": ws_manager.is_worker_online_for(camera_id),
         "active_camera_id": ws_manager.active_worker_camera_id,
@@ -483,11 +498,7 @@ async def stream_simulation_monitor(
 ) -> StreamingResponse:
     """Stream visualisasi pose real-time dari Sandbox CV Worker (terisolasi per kamera)."""
     _ensure_simulation_access(db, camera_id, current_user)
-    if current_user.role != "admin" and ws_manager.active_worker_camera_id != camera_id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Kamera ini sedang tidak menjalankan simulasi aktif.",
-        )
+    ws_manager.active_worker_camera_id = camera_id
     _ensure_cv_worker_running(camera_id)
     upstream_url = f"{CV_WORKER_URL}/stream"
 

@@ -7,7 +7,7 @@ import '../models/user_model.dart';
 class ApiService {
   static const String defaultBackendUrl = String.fromEnvironment(
     'BACKEND_URL',
-    defaultValue: 'http://192.168.0.129:8000',
+    defaultValue: 'http://192.168.1.9:8000',
   );
 
   late final Dio _dio;

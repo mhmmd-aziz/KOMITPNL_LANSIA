@@ -172,13 +172,14 @@ def main() -> None:
     config.CAMERA_ID = args.camera_id
     show_desktop_window = bool(args.show_window and not args.no_preview)
 
+    # Ikat port 8001 terlebih dahulu sebelum memuat model berat agar tidak ada worker duplikat
+    start_mjpeg_server(config.MJPEG_HOST, config.MJPEG_PORT)
+    start_worker_ws_thread()
+
     model_file = config.BASE_DIR / config.MODEL_PATH
     model_target = str(model_file) if model_file.exists() else config.MODEL_PATH
     logger.info("Memuat model pose %s...", model_target)
     detector = FallDetector(model_target)
-
-    start_mjpeg_server(config.MJPEG_HOST, config.MJPEG_PORT)
-    start_worker_ws_thread()
 
     cap: cv2.VideoCapture | None = None
     is_video_file = False
@@ -296,6 +297,26 @@ def main() -> None:
 
     if args.source.lower() != "idle":
         start_source(args.source, loop_flag=args.loop)
+    else:
+        # Muat otomatis pratinjau ruangan nyata dari video bawaan agar tidak tampil layar kosong
+        import json as _json
+        default_zones_map = {}
+        sz_file = config.BASE_DIR / "safe_zones.json"
+        if sz_file.exists():
+            try:
+                default_zones_map = _json.loads(sz_file.read_text(encoding="utf-8"))
+            except Exception:
+                default_zones_map = {}
+        for default_vid in ("demo_jatuh.mp4", "demo_duduk.mp4"):
+            resolved_def = resolve_video_path(default_vid)
+            if isinstance(resolved_def, str) and Path(resolved_def).exists():
+                z_init = (
+                    default_zones_map.get(f"cam_{active_camera_id}::{default_vid}")
+                    or default_zones_map.get(default_vid)
+                    or []
+                )
+                prepare_video_preview(default_vid, zones_raw=z_init)
+                break
 
     window_name = "SIGAP CV Worker"
     if show_desktop_window:
@@ -375,26 +396,26 @@ def main() -> None:
                     progress_val = 0
 
                 frame_buffer.update(display_frame)
-                publish_telemetry(
-                    {
-                        "type": "simulation.telemetry",
-                        "camera_id": active_camera_id,
-                        "mode": mode_state,
-                        "running": False,
-                        "source": source_label,
-                        "zones_count": len(detector.ignore_zones_norm),
-                        "progress": progress_val,
-                        "state": (
-                            "JATUH_TERKONFIRMASI"
-                            if (mode_state == "finished" and ever_confirmed_in_run)
-                            else "NORMAL"
-                        ),
-                        "posture": posture_txt,
-                        "torso_angle": 0.0,
-                        "aspect_ratio": 0.0,
-                        "timer_elapsed": 0.0,
-                    }
-                )
+                tel_idle = {
+                    "type": "simulation.telemetry",
+                    "camera_id": active_camera_id,
+                    "mode": mode_state,
+                    "running": False,
+                    "source": source_label,
+                    "zones_count": len(detector.ignore_zones_norm),
+                    "progress": progress_val,
+                    "state": (
+                        "JATUH_TERKONFIRMASI"
+                        if (mode_state == "finished" and ever_confirmed_in_run)
+                        else "NORMAL"
+                    ),
+                    "posture": posture_txt,
+                    "torso_angle": 0.0,
+                    "aspect_ratio": 0.0,
+                    "timer_elapsed": 0.0,
+                }
+                frame_buffer.latest_telemetry = tel_idle
+                publish_telemetry(tel_idle)
                 if show_desktop_window:
                     cv2.imshow(window_name, display_frame)
                     if (cv2.waitKey(40) & 0xFF) in (ord("q"), 27):
@@ -514,22 +535,22 @@ def main() -> None:
             last_annotated_frame = display_frame
             frame_buffer.update(display_frame)
 
-            publish_telemetry(
-                {
-                    "type": "simulation.telemetry",
-                    "camera_id": active_camera_id,
-                    "mode": "running",
-                    "running": True,
-                    "source": source_label,
-                    "zones_count": len(detector.ignore_zones_norm),
-                    "progress": progress_pct,
-                    "state": result.state,
-                    "posture": result.posture_label,
-                    "torso_angle": round(result.torso_angle_deg, 1),
-                    "aspect_ratio": round(result.aspect_ratio, 2),
-                    "timer_elapsed": round(result.timer_elapsed, 1),
-                }
-            )
+            tel_run = {
+                "type": "simulation.telemetry",
+                "camera_id": active_camera_id,
+                "mode": "running",
+                "running": True,
+                "source": source_label,
+                "zones_count": len(detector.ignore_zones_norm),
+                "progress": progress_pct,
+                "state": result.state,
+                "posture": result.posture_label,
+                "torso_angle": round(result.torso_angle_deg, 1),
+                "aspect_ratio": round(result.aspect_ratio, 2),
+                "timer_elapsed": round(result.timer_elapsed, 1),
+            }
+            frame_buffer.latest_telemetry = tel_run
+            publish_telemetry(tel_run)
 
             if show_desktop_window:
                 cv2.imshow(window_name, display_frame)

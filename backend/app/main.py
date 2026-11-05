@@ -2,6 +2,7 @@
 
 from contextlib import asynccontextmanager
 import logging
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -65,11 +66,19 @@ def _ensure_column_migrations() -> None:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    """Inisialisasi tabel database, Firebase SDK, dan retensi privasi saat startup."""
+    """Inisialisasi tabel database, Firebase SDK, retensi privasi, & CV Worker saat startup."""
     Base.metadata.create_all(bind=engine)
     _ensure_column_migrations()
+    if os.getenv("WORKER_API_KEY") != "test-worker-key":
+        try:
+            from seed_demo import run_seed
+
+            run_seed()
+        except Exception as exc:
+            logger.debug("Auto-seed dilewati: %s", exc)
     init_firebase()
     purge_expired_media()
+    simulations._ensure_cv_worker_running(1)
     logger.info("Backend SIGAP siap melayani request.")
     try:
         yield
